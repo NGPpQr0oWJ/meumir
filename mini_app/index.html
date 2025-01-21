@@ -2,7 +2,11 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="Меню доставки еды">
     <title>Меню доставки</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="styles.css">
@@ -11,11 +15,22 @@
     <div id="app">
         <div class="menu-container">
             <h1>Меню на сегодня</h1>
-            <div id="menu-items" class="menu-items"></div>
+            <div id="menu-items" class="menu-items">
+                <!-- Здесь будут элементы меню -->
+                <div class="menu-item skeleton">
+                    <div class="skeleton-title"></div>
+                    <div class="skeleton-description"></div>
+                    <div class="skeleton-price"></div>
+                    <div class="skeleton-controls"></div>
+                </div>
+            </div>
         </div>
+        
         <div class="cart-container">
             <h2>Корзина</h2>
-            <div id="cart-items" class="cart-items"></div>
+            <div id="cart-items" class="cart-items">
+                <!-- Здесь будут элементы корзины -->
+            </div>
             <div class="cart-total">
                 <span>Итого:</span>
                 <span id="total-amount">0 ₽</span>
