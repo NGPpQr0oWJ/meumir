@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+
+{% block page_title %}Блюда{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text border-0 bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control border-0 bg-light" 
+                           placeholder="Поиск блюд..." onkeyup="filterDishes()">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <select id="categoryFilter" class="form-select border-0 bg-light" onchange="filterDishes()">
+                    <option value="">Все категории</option>
+                    {% for category in categories %}
+                    <option value="{{ category.code }}">{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if dishes %}
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th class="border-0 py-3" style="min-width: 300px">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-card-text me-2"></i>
+                            Название
+                        </div>
+                    </th>
+                    <th class="border-0 py-3" style="min-width: 200px">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-tag me-2"></i>
+                            Категория
+                        </div>
+                    </th>
+                    <th class="border-0 py-3" style="min-width: 150px">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calculator me-2"></i>
+                            Себестоимость
+                        </div>
+                    </th>
+                    <th class="border-0 py-3" style="min-width: 150px">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-currency-dollar me-2"></i>
+                            Цена продажи
+                        </div>
+                    </th>
+                    <th class="border-0 text-end py-3" style="width: 120px">
+                        <div class="d-flex align-items-center justify-content-end">
+                            <i class="bi bi-gear me-2"></i>
+                            Действия
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dish in dishes %}
+                <tr class="dish-row" data-category="{{ dish.category.code }}" data-name="{{ dish.name.lower() }}">
+                    <td class="align-middle text-nowrap py-3">{{ dish.name }}</td>
+                    <td class="align-middle py-3">{{ dish.category.name }}</td>
+                    <td class="align-middle py-3">{{ "%.2f"|format(dish.cost_price) }} ₽</td>
+                    <td class="align-middle py-3">{{ "%.2f"|format(dish.selling_price) }} ₽</td>
+                    <td class="text-end py-3">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" 
+                                    data-bs-target="#editDishModal" data-dish-id="{{ dish.id }}" 
+                                    data-dish-data="{{ dish.to_dict()|tojson }}" title="Редактировать">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" 
+                                    data-bs-target="#deleteConfirmModal" title="Удалить" 
+                                    onclick="confirmDelete('{{ url_for('delete_dish', id=dish.id) }}')">
+                                <i class="bi bi-trash text-danger"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <button type="button" class="btn btn-primary px-4" data-bs-toggle="modal" data-bs-target="#addDishModal">
+        <i class="bi bi-plus-lg me-2"></i>
+        Добавить блюдо
+    </button>
+</div>
+{% else %}
+<div class="card shadow-sm border-0">
+    <div class="card-body text-center py-5">
+        <div class="mb-4">
+            <i class="bi bi-layout-text-window-reverse display-4 text-muted"></i>
+        </div>
+        <h5>Нет добавленных блюд</h5>
+        <p class="text-muted mb-4">Добавьте первое блюдо в меню</p>
+        <button type="button" class="btn btn-primary px-4" data-bs-toggle="modal" data-bs-target="#addDishModal">
+            <i class="bi bi-plus-lg me-2"></i>
+            Добавить блюдо
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Модальное окно добавления блюда -->
+<div class="modal fade" id="addDishModal" tabindex="-1" aria-labelledby="addDishModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="addDishModalLabel">Новое блюдо</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('add_dish') }}" class="needs-validation" novalidate>
+                    {{ form.csrf_token }}
+                    
+                    <div class="mb-4">
+                        {{ form.name.label(class="form-label h6 mb-3") }}
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text border-0 bg-light">
+                                <i class="bi bi-pencil-square"></i>
+                            </span>
+                            {{ form.name(class="form-control form-control-lg border-0 bg-light" + (" is-invalid" if form.name.errors else ""), 
+                                       placeholder="Например: Борщ",
+                                       autocomplete="off") }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        {{ form.category.label(class="form-label h6 mb-3") }}
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text border-0 bg-light">
+                                <i class="bi bi-tag"></i>
+                            </span>
+                            {{ form.category(class="form-select form-select-lg border-0 bg-light" + (" is-invalid" if form.category.errors else "")) }}
+                            {% if form.category.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-sm-6">
+                            <div class="price-block h-100">
+                                {{ form.cost_price.label(class="form-label h6 mb-3") }}
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text border-0 bg-light">
+                                        <i class="bi bi-calculator"></i>
+                                    </span>
+                                    {{ form.cost_price(class="form-control form-control-lg border-0 bg-light" + (" is-invalid" if form.cost_price.errors else ""), 
+                                                     type="number", 
+                                                     step="0.01", 
+                                                     min="0",
+                                                     placeholder="0.00",
+                                                     autocomplete="off") }}
+                                    <span class="input-group-text border-0 bg-light">₽</span>
+                                    {% if form.cost_price.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.cost_price.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="price-block h-100">
+                                {{ form.selling_price.label(class="form-label h6 mb-3") }}
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text border-0 bg-light">
+                                        <i class="bi bi-tag"></i>
+                                    </span>
+                                    {{ form.selling_price(class="form-control form-control-lg border-0 bg-light" + (" is-invalid" if form.selling_price.errors else ""), 
+                                                        type="number", 
+                                                        step="0.01",
+                                                        min="0",
+                                                        placeholder="0.00",
+                                                        autocomplete="off") }}
+                                    <span class="input-group-text border-0 bg-light">₽</span>
+                                    {% if form.selling_price.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.selling_price.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Информация о марже -->
+                    <div class="alert alert-light border-0 bg-light mb-4 d-none" id="marginInfo">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1">Подсказка</h6>
+                                <p class="text-muted small mb-0">
+                                    Вы можете использовать поиск для быстрого нахождения нужных блюд
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 px-0 pb-0">
+                        <button type="button" class="btn btn-light btn-lg px-4" data-bs-dismiss="modal">
+                            Отмена
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg px-5">
+                            <i class="bi bi-check me-2"></i>
+                            Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования блюда -->
+<div class="modal fade" id="editDishModal" tabindex="-1" aria-labelledby="editDishModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="editDishModalLabel">Редактирование блюда</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDishForm" method="POST" class="needs-validation" novalidate>
+                    {{ form.csrf_token }}
+                    
+                    <div class="mb-4">
+                        {{ form.name.label(class="form-label h6 mb-3") }}
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text border-0 bg-light">
+                                <i class="bi bi-pencil-square"></i>
+                            </span>
+                            {{ form.name(id="edit_name", class="form-control form-control-lg border-0 bg-light" + (" is-invalid" if form.name.errors else ""), 
+                                       placeholder="Например: Борщ",
+                                       autocomplete="off") }}
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        {{ form.category.label(class="form-label h6 mb-3") }}
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text border-0 bg-light">
+                                <i class="bi bi-tag"></i>
+                            </span>
+                            {{ form.category(id="edit_category", class="form-select form-select-lg border-0 bg-light" + (" is-invalid" if form.category.errors else "")) }}
+                            {% if form.category.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-sm-6">
+                            <div class="price-block h-100">
+                                {{ form.cost_price.label(class="form-label h6 mb-3") }}
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text border-0 bg-light">
+                                        <i class="bi bi-calculator"></i>
+                                    </span>
+                                    {{ form.cost_price(id="edit_cost_price", class="form-control form-control-lg border-0 bg-light" + (" is-invalid" if form.cost_price.errors else ""), 
+                                                     type="number", 
+                                                     step="0.01", 
+                                                     min="0",
+                                                     placeholder="0.00",
+                                                     autocomplete="off") }}
+                                    <span class="input-group-text border-0 bg-light">₽</span>
+                                    {% if form.cost_price.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.cost_price.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="price-block h-100">
+                                {{ form.selling_price.label(class="form-label h6 mb-3") }}
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text border-0 bg-light">
+                                        <i class="bi bi-tag"></i>
+                                    </span>
+                                    {{ form.selling_price(id="edit_selling_price", class="form-control form-control-lg border-0 bg-light" + (" is-invalid" if form.selling_price.errors else ""), 
+                                                        type="number", 
+                                                        step="0.01",
+                                                        min="0",
+                                                        placeholder="0.00",
+                                                        autocomplete="off") }}
+                                    <span class="input-group-text border-0 bg-light">₽</span>
+                                    {% if form.selling_price.errors %}
+                                    <div class="invalid-feedback">
+                                        {% for error in form.selling_price.errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Информация о марже -->
+                    <div class="alert alert-light border-0 bg-light mb-4 d-none" id="editMarginInfo">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-1">Подсказка</h6>
+                                <p class="text-muted small mb-0">
+                                    Вы можете использовать поиск для быстрого нахождения нужных блюд
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 px-0 pb-0">
+                        <button type="button" class="btn btn-light btn-lg px-4" data-bs-dismiss="modal">
+                            Отмена
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg px-5">
+                            <i class="bi bi-check me-2"></i>
+                            Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Вы уверены, что хотите удалить это блюдо?
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+                <form id="deleteForm" method="POST">
+                    {{ form.csrf_token }}
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Удаление блюда</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-exclamation-triangle text-warning fs-1 mb-3 d-block"></i>
+                <p class="mb-0">Вы действительно хотите удалить блюдо "<span id="dishName"></span>"?</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger px-4" onclick="deleteDish()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Форма для удаления -->
+<form id="deleteForm" method="POST" style="display: none;"></form>
+
+{% block extra_css %}
+<style>
+.modal-content {
+    border-radius: 16px;
+}
+
+.modal-lg {
+    --bs-modal-width: 800px;
+}
+
+.form-control-lg, 
+.form-select-lg, 
+.input-group-text {
+    font-size: 1rem;
+    min-height: 52px;
+}
+
+.input-group-text {
+    color: #6c757d;
+}
+
+.form-control,
+.form-select {
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: #fff !important;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(44, 62, 80, 0.15);
+}
+
+.form-control::placeholder {
+    color: #adb5bd;
+}
+
+.btn {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary {
+    box-shadow: 0 4px 12px rgba(44, 62, 80, 0.15);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(44, 62, 80, 0.2);
+}
+
+.btn-light {
+    background: #f8f9fa;
+    border-color: #f8f9fa;
+}
+
+.btn-light:hover {
+    background: #e9ecef;
+    border-color: #e9ecef;
+}
+
+#marginInfo {
+    border-radius: 12px;
+}
+
+@media (max-width: 576px) {
+    .modal-content {
+        border-radius: 12px;
+    }
+    
+    .form-control-lg, 
+    .form-select-lg, 
+    .input-group-text {
+        font-size: 1rem;
+        min-height: 48px;
+    }
+    
+    .btn-lg {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация тултипов
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Функция фильтрации блюд
+    window.filterDishes = function() {
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+        const selectedCategory = document.getElementById('categoryFilter').value;
+        
+        document.querySelectorAll('.dish-row').forEach(row => {
+            const dishName = row.getAttribute('data-name');
+            const dishCategory = row.getAttribute('data-category');
+            
+            const matchesSearch = dishName.includes(searchText);
+            const matchesCategory = !selectedCategory || dishCategory === selectedCategory;
+            
+            row.style.display = matchesSearch && matchesCategory ? '' : 'none';
+        });
+    };
+
+    // Функция расчета маржи
+    function setupMarginCalculation(costPriceId, sellingPriceId, marginInfoId, marginTextId) {
+        const costPrice = document.getElementById(costPriceId);
+        const sellingPrice = document.getElementById(sellingPriceId);
+        const marginInfo = document.getElementById(marginInfoId);
+        const marginText = document.getElementById(marginTextId);
+        
+        function calculateMargin() {
+            const cost = parseFloat(costPrice.value) || 0;
+            const price = parseFloat(sellingPrice.value) || 0;
+            
+            if (cost > 0 && price > 0) {
+                const margin = price - cost;
+                const marginPercent = (margin / cost * 100).toFixed(1);
+                
+                let marginStatus = '';
+                if (marginPercent >= 30) {
+                    marginStatus = 'text-success fw-medium';
+                } else if (marginPercent >= 15) {
+                    marginStatus = 'text-warning fw-medium';
+                } else {
+                    marginStatus = 'text-danger fw-medium';
+                }
+                
+                marginText.innerHTML = `Маржа составит <span class="${marginStatus}">${margin.toFixed(2)} ₽ (${marginPercent}%)</span>`;
+                marginInfo.classList.remove('d-none');
+            } else {
+                marginInfo.classList.add('d-none');
+            }
+        }
+        
+        costPrice.addEventListener('input', calculateMargin);
+        sellingPrice.addEventListener('input', calculateMargin);
+    }
+    
+    // Инициализация расчета маржи для формы добавления
+    setupMarginCalculation('cost_price', 'selling_price', 'marginInfo', 'marginText');
+    
+    // Инициализация расчета маржи для формы редактирования
+    setupMarginCalculation('edit_cost_price', 'edit_selling_price', 'editMarginInfo', 'editMarginText');
+
+    // Обработка редактирования
+    const editDishModal = document.getElementById('editDishModal');
+    editDishModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const dishId = button.getAttribute('data-dish-id');
+        const dishData = JSON.parse(button.getAttribute('data-dish-data'));
+        
+        const form = this.querySelector('form');
+        form.action = `/dishes/${dishId}/edit`;
+        
+        // Заполняем форму данными
+        document.getElementById('edit_name').value = dishData.name;
+        document.getElementById('edit_category').value = dishData.category;
+        document.getElementById('edit_cost_price').value = dishData.cost_price;
+        document.getElementById('edit_selling_price').value = dishData.selling_price;
+        
+        // Вызываем расчет маржи
+        document.getElementById('edit_cost_price').dispatchEvent(new Event('input'));
+    });
+
+    // Обработка удаления
+    window.confirmDelete = function(deleteUrl) {
+        const deleteForm = document.getElementById('deleteForm');
+        deleteForm.action = deleteUrl;
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        deleteModal.show();
+    };
+});
+</script>
+{% endblock %}
+{% endblock %}

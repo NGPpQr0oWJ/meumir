@@ -1,0 +1,650 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Отчеты</h2>
+                <div class="d-flex gap-3 align-items-center">
+                    <div class="btn-group" role="group" aria-label="Период отчета">
+                        <button type="button" class="btn btn-outline-primary" data-period="week">Текущая неделя</button>
+                        <button type="button" class="btn btn-outline-primary active" data-period="month">Текущий месяц</button>
+                        <button type="button" class="btn btn-outline-primary" data-period="year">Текущий год</button>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="start_date" class="form-label small text-muted">Начальная дата</label>
+                        <input type="date" class="form-control form-control-sm" id="start_date">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label for="end_date" class="form-label small text-muted">Конечная дата</label>
+                        <input type="date" class="form-control form-control-sm" id="end_date">
+                    </div>
+                    <button class="btn btn-primary" onclick="generateReports()">Сформировать</button>
+                </div>
+            </div>
+
+            <!-- Отчет по продажам -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 text-primary">Отчет по продажам</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary bg-gradient text-white h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-white-50">Количество заказов</h6>
+                                            <h3 class="mb-0" id="orders-count">-</h3>
+                                        </div>
+                                        <i class="fas fa-shopping-cart fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success bg-gradient text-white h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-white-50">Общая выручка</h6>
+                                            <h3 class="mb-0" id="total-revenue">-</h3>
+                                        </div>
+                                        <i class="fas fa-ruble-sign fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning bg-gradient h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-dark">Общая себестоимость</h6>
+                                            <h3 class="mb-0 text-dark" id="total-cost">-</h3>
+                                        </div>
+                                        <i class="fas fa-calculator fa-2x text-dark-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info bg-gradient text-white h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-white-50">Прибыль</h6>
+                                            <h3 class="mb-0" id="profit">-</h3>
+                                        </div>
+                                        <i class="fas fa-chart-line fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-purple bg-gradient text-white h-100 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="text-white-50">Рентабельность</h6>
+                                            <h3 class="mb-0"><span id="profitability">-</span>%</h3>
+                                        </div>
+                                        <i class="fas fa-percentage fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <canvas id="salesChart" style="height: 300px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <canvas id="ordersChart" style="height: 300px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Отчет по популярным блюдам -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0 text-primary">Популярные блюда</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-light rounded p-4 mb-4">
+                                <canvas id="popularDishesChart" height="200"></canvas>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Блюдо</th>
+                                            <th class="text-center">Количество</th>
+                                            <th class="text-end">Выручка</th>
+                                            <th class="text-end">Прибыль</th>
+                                            <th class="text-end">Рентаб.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="popular-dishes-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Отчет по категориям -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white py-3">
+                            <h5 class="mb-0 text-primary">Отчет по категориям</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-light rounded p-4 mb-4">
+                                <canvas id="categoriesChart" height="200"></canvas>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Категория</th>
+                                            <th class="text-center">Количество</th>
+                                            <th class="text-end">Выручка</th>
+                                            <th class="text-end">Прибыль</th>
+                                            <th class="text-end">Рентаб-ть</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="categories-body">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Подключаем Font Awesome и Chart.js -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns/locale/ru/index.js"></script>
+
+<style>
+.bg-purple {
+    background-color: #6f42c1!important;
+}
+</style>
+
+<script>
+// Устанавливаем русскую локаль для date-fns
+const ruLocale = {
+    code: 'ru',
+    formatLong: {
+        date: 'dd.MM.yyyy',
+        time: 'HH:mm',
+        dateTime: 'dd.MM.yyyy HH:mm'
+    },
+    localize: {
+        month: function(n, options) {
+            const months = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+            return months[n];
+        },
+        day: function(n, options) {
+            const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+            return days[n];
+        }
+    }
+};
+
+// Инициализация графиков
+let salesChart = null;
+let ordersChart = null;
+let popularDishesChart = null;
+let categoriesChart = null;
+
+// Установка начальной и конечной даты текущего месяца
+function setCurrentMonthDates() {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    document.getElementById('start_date').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('end_date').value = lastDay.toISOString().split('T')[0];
+}
+
+// Функция для получения дат на основе выбранного периода
+function getDateRange(period) {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch(period) {
+        case 'week':
+            // Начало текущей недели (понедельник)
+            start.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+            end = new Date(now);
+            break;
+        case 'month':
+            // Начало текущего месяца
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            break;
+        case 'year':
+            // Начало текущего года
+            start = new Date(now.getFullYear(), 0, 1);
+            end = new Date(now.getFullYear(), 11, 31);
+            break;
+    }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+    };
+}
+
+// Обработчик клика по кнопкам периода
+function handlePeriodClick(e) {
+    const period = e.target.dataset.period;
+    if (!period) return;
+
+    // Обновляем активную кнопку
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    e.target.classList.add('active');
+
+    // Устанавливаем даты
+    const dates = getDateRange(period);
+    document.getElementById('start_date').value = dates.start;
+    document.getElementById('end_date').value = dates.end;
+
+    // Генерируем отчет
+    generateReports();
+}
+
+// Вызываем при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Устанавливаем обработчики на кнопки периода
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.addEventListener('click', handlePeriodClick);
+    });
+
+    // По умолчанию показываем текущий месяц
+    setCurrentMonthDates();
+    generateReports();
+});
+
+// Вызываем при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    setCurrentMonthDates();
+    generateReports();
+});
+
+async function generateReports() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    
+    if (!startDate || !endDate) {
+        alert('Пожалуйста, выберите даты для отчета');
+        return;
+    }
+
+    try {
+        // Загрузка отчета по продажам
+        const salesResponse = await fetch(`/reports/sales?start_date=${startDate}&end_date=${endDate}`);
+        const salesData = await salesResponse.json();
+        
+        if (!salesResponse.ok) throw new Error(salesData.error || 'Ошибка при загрузке отчета по продажам');
+        
+        updateSalesReport(salesData);
+
+        // Загрузка отчета по популярным блюдам
+        const dishesResponse = await fetch(`/reports/popular-dishes?start_date=${startDate}&end_date=${endDate}`);
+        const dishesData = await dishesResponse.json();
+        
+        if (!dishesResponse.ok) throw new Error(dishesData.error || 'Ошибка при загрузке отчета по популярным блюдам');
+        
+        updatePopularDishesReport(dishesData);
+
+        // Загрузка отчета по категориям
+        const categoriesResponse = await fetch(`/reports/categories?start_date=${startDate}&end_date=${endDate}`);
+        const categoriesData = await categoriesResponse.json();
+        
+        if (!categoriesResponse.ok) throw new Error(categoriesData.error || 'Ошибка при загрузке отчета по категориям');
+        
+        updateCategoriesReport(categoriesData);
+
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+function getChartOptions(period, data) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: `Динамика заказов за ${period === 'week' ? 'неделю' : period === 'month' ? 'месяц' : 'год'}`
+            },
+            tooltip: {
+                callbacks: {
+                    title: function(context) {
+                        const date = new Date(data.daily_data[context[0].dataIndex].date);
+                        return date.toLocaleDateString('ru-RU', {
+                            day: period !== 'year' ? 'numeric' : undefined,
+                            month: 'long',
+                            year: period === 'year' ? 'numeric' : undefined
+                        });
+                    },
+                    label: function(context) {
+                        return `Заказов: ${context.raw}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    maxTicksLimit: period === 'week' ? 7 : period === 'month' ? 31 : 12,
+                    callback: function(value, index, values) {
+                        const date = new Date(data.daily_data[index].date);
+                        if (period === 'year') {
+                            return date.toLocaleDateString('ru-RU', { month: 'short' });
+                        } else if (period === 'week') {
+                            return date.toLocaleDateString('ru-RU', { weekday: 'short' });
+                        } else {
+                            // Для месяца показываем каждый пятый день
+                            if (index % 5 === 0 || index === values.length - 1) {
+                                return date.getDate();
+                            }
+                            return '';
+                        }
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1,
+                    callback: function(value) {
+                        return value.toFixed(0);
+                    }
+                }
+            }
+        }
+    };
+}
+
+function updateSalesReport(data) {
+    // Определяем текущий период по активной кнопке
+    const activePeriodBtn = document.querySelector('[data-period].active');
+    const currentPeriod = activePeriodBtn ? activePeriodBtn.dataset.period : 'month';
+
+    // Форматируем числа без десятичных знаков
+    const formatNumber = (value) => {
+        if (typeof value === 'string') {
+            value = parseFloat(value.replace(/[^0-9.-]+/g, ''));
+        }
+        return new Intl.NumberFormat('ru-RU', {
+            style: 'currency',
+            currency: 'RUB',
+            maximumFractionDigits: 0,
+            minimumFractionDigits: 0
+        }).format(value);
+    };
+
+    // Обновляем текстовые значения
+    document.getElementById('orders-count').textContent = Math.round(data.orders_count);
+    document.getElementById('total-revenue').textContent = formatNumber(data.total_revenue);
+    document.getElementById('total-cost').textContent = formatNumber(data.total_cost);
+    document.getElementById('profit').textContent = formatNumber(data.profit);
+    document.getElementById('profitability').textContent = Math.round(data.profitability);
+
+    // Уничтожаем старые графики если они существуют
+    if (salesChart) {
+        salesChart.destroy();
+        salesChart = null;
+    }
+    if (ordersChart) {
+        ordersChart.destroy();
+        ordersChart = null;
+    }
+
+    // Создаем график продаж
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    salesChart = new Chart(salesCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Выручка', 'Себестоимость', 'Прибыль'],
+            datasets: [{
+                data: [
+                    parseFloat(data.total_revenue.replace(/[^0-9.-]+/g, '')),
+                    parseFloat(data.total_cost.replace(/[^0-9.-]+/g, '')),
+                    parseFloat(data.profit.replace(/[^0-9.-]+/g, ''))
+                ],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.7)',  // зеленый для выручки
+                    'rgba(255, 193, 7, 0.7)',  // желтый для себестоимости
+                    'rgba(23, 162, 184, 0.7)'  // голубой для прибыли
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(23, 162, 184, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Финансовые показатели за период'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return new Intl.NumberFormat('ru-RU', {
+                                style: 'currency',
+                                currency: 'RUB',
+                                maximumFractionDigits: 0,
+                                minimumFractionDigits: 0
+                            }).format(context.raw);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('ru-RU', {
+                                style: 'currency',
+                                currency: 'RUB',
+                                maximumFractionDigits: 0,
+                                minimumFractionDigits: 0
+                            }).format(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Создаем график заказов
+    const ordersCtx = document.getElementById('ordersChart').getContext('2d');
+    ordersChart = new Chart(ordersCtx, {
+        type: 'line',
+        data: {
+            labels: data.daily_data.map(d => {
+                const date = new Date(d.date);
+                if (currentPeriod === 'year') {
+                    return date.toLocaleDateString('ru-RU', { month: 'short' });
+                } else if (currentPeriod === 'week') {
+                    return date.toLocaleDateString('ru-RU', { weekday: 'short' });
+                } else {
+                    return date.getDate().toString();
+                }
+            }),
+            datasets: [{
+                label: 'Количество заказов',
+                data: data.daily_data.map(d => d.orders),
+                borderColor: 'rgba(153, 102, 255, 1)',
+                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: 'rgba(153, 102, 255, 1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: getChartOptions(currentPeriod, data)
+    });
+}
+
+function updatePopularDishesReport(data) {
+    // Обновляем таблицу
+    const dishesBody = document.getElementById('popular-dishes-body');
+    dishesBody.innerHTML = data.dishes.map(dish => `
+        <tr>
+            <td>${dish.name}</td>
+            <td class="text-center">${dish.quantity}</td>
+            <td class="text-end">${dish.revenue}</td>
+            <td class="text-end">${dish.profit}</td>
+            <td class="text-end">${dish.profitability.toFixed(2)}%</td>
+        </tr>
+    `).join('');
+
+    // Обновляем график
+    const ctx = document.getElementById('popularDishesChart').getContext('2d');
+    
+    if (popularDishesChart) {
+        popularDishesChart.destroy();
+        popularDishesChart = null;
+    }
+
+    // Берем топ-5 блюд для графика
+    const topDishes = data.dishes.slice(0, 5);
+
+    popularDishesChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: topDishes.map(dish => dish.name),
+            datasets: [{
+                data: topDishes.map(dish => dish.quantity),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                title: {
+                    display: true,
+                    text: 'Топ-5 популярных блюд'
+                }
+            }
+        }
+    });
+}
+
+function updateCategoriesReport(data) {
+    // Обновляем таблицу
+    const categoriesBody = document.getElementById('categories-body');
+    categoriesBody.innerHTML = data.categories.map(category => `
+        <tr>
+            <td>${category.name}</td>
+            <td class="text-center">${category.quantity}</td>
+            <td class="text-end">${category.revenue}</td>
+            <td class="text-end">${category.profit}</td>
+            <td class="text-end">${category.profitability.toFixed(2)}%</td>
+        </tr>
+    `).join('');
+
+    // Обновляем график
+    const ctx = document.getElementById('categoriesChart').getContext('2d');
+    
+    if (categoriesChart) {
+        categoriesChart.destroy();
+        categoriesChart = null;
+    }
+
+    categoriesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.categories.map(cat => cat.name),
+            datasets: [{
+                data: data.categories.map(cat => parseFloat(cat.revenue.replace(/[^0-9.-]+/g, ''))),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                title: {
+                    display: true,
+                    text: 'Выручка по категориям'
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

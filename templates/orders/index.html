@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block page_title %}Заказы{% endblock %}
+
+{% block head %}
+<!-- Подключаем API Яндекс Карт -->
+<script src="https://api-maps.yandex.ru/2.1/?apikey=1b53508a-343b-43a0-b563-e4b209ea0117&lang=ru_RU" type="text/javascript"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-cart3 me-2"></i>Заказы</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOrderModal">
+            <i class="bi bi-plus-lg me-2"></i>Новый заказ
+        </button>
+    </div>
+    
+    <!-- Таблица заказов -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center" style="width: 80px">
+                                <i class="bi bi-hash me-2"></i>ID
+                            </th>
+                            <th>
+                                <i class="bi bi-person me-2"></i>Клиент
+                            </th>
+                            <th>
+                                <i class="bi bi-telephone me-2"></i>Телефон
+                            </th>
+                            <th>
+                                <i class="bi bi-geo-alt me-2"></i>Адрес доставки
+                            </th>
+                            <th>
+                                <i class="bi bi-calendar-event me-2"></i>Дата заказа
+                            </th>
+                            <th class="text-end">
+                                <i class="bi bi-currency-rub me-2"></i>Сумма
+                            </th>
+                            <th class="text-center" style="width: 160px">
+                                <i class="bi bi-gear me-2"></i>Действия
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td class="text-center">{{ order.id }}</td>
+                            <td>{{ order.customer_name }}</td>
+                            <td>{{ order.phone_number }}</td>
+                            <td>{{ order.delivery_address }}</td>
+                            <td>{{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td class="text-end">{{ format_price(get_order_total(order)) }}</td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-light border-0 rounded me-1 view-order" 
+                                           data-order-id="{{ order.id }}"
+                                           data-bs-toggle="tooltip"
+                                           title="Просмотреть детали">
+                                         <i class="bi bi-eye text-primary"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-light border-0 rounded delete-order" 
+                                           data-order-id="{{ order.id }}"
+                                           data-bs-toggle="tooltip"
+                                           title="Удалить заказ">
+                                         <i class="bi bi-trash text-danger"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления заказа -->
+    <div class="modal fade" id="addOrderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-bag-plus me-2"></i>Новый заказ
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addOrderForm">
+                        <div class="mb-3">
+                            <label for="customer_name" class="form-label">
+                                <i class="bi bi-person me-2"></i>Имя клиента
+                            </label>
+                            <input type="text" class="form-control" id="customer_name" name="customer_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone_number" class="form-label">
+                                <i class="bi bi-telephone me-2"></i>Телефон
+                            </label>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="delivery_address" class="form-label">
+                                <i class="bi bi-geo-alt me-2"></i>Адрес доставки
+                            </label>
+                            <input type="text" class="form-control" id="delivery_address" name="delivery_address" 
+                                   placeholder="Начните вводить адрес, например: Владикавказ, улица" required>
+                        </div>
+                        <div class="mb-3">
+                            <h6>
+                                <i class="bi bi-list-check me-2"></i>Состав заказа
+                            </h6>
+                            <div id="orderItems" class="mb-3">
+                                <div class="row mb-2 order-item align-items-center">
+                                    <div class="col-6">
+                                        <select class="form-select dish-select" name="dish_id" required>
+                                            <option value="">Выберите блюдо</option>
+                                            {% for dish in dishes %}
+                                            <option value="{{ dish.id }}" data-price="{{ dish.selling_price }}">
+                                                {{ dish.name }} ({{ dish.selling_price }} ₽)
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="bi bi-calculator"></i>
+                                            </span>
+                                            <input type="number" class="form-control quantity-input" name="quantity" value="1" min="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-2">
+                                        <button type="button" class="btn btn-outline-danger btn-sm remove-item">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="addItemBtn">
+                                <i class="bi bi-plus-lg me-2"></i>Добавить блюдо
+                            </button>
+                        </div>
+                        <div class="text-end">
+                            <h5>
+                                <i class="bi bi-currency-rub me-2"></i>Итого: <span id="orderTotal">0</span> ₽
+                            </h5>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="saveOrderBtn">
+                        <i class="bi bi-check-lg me-2"></i>Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно просмотра заказа -->
+    <div class="modal fade" id="viewOrderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle me-2"></i>Информация о заказе
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="viewOrderContent">
+                    <!-- Содержимое будет добавлено динамически -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+    console.log('Загрузка страницы заказов...');
+</script>
+<!-- Подключаем скрипт для подсказок адресов -->
+<script src="{{ url_for('static', filename='js/address-suggestions.js') }}"></script>
+<script>
+$(document).ready(function() {
+    // Функция для обновления общей суммы заказа
+    function updateOrderTotal() {
+        let total = 0;
+        $('.order-item').each(function() {
+            const select = $(this).find('.dish-select');
+            const quantity = parseInt($(this).find('.quantity-input').val()) || 0;
+            const price = parseFloat(select.find('option:selected').data('price')) || 0;
+            total += price * quantity;
+        });
+        $('#orderTotal').text(total.toFixed(2));
+    }
+
+    // Добавление нового блюда в заказ
+    $('#addItemBtn').click(function() {
+        console.log('Добавление нового блюда');
+        const newItem = $('.order-item').first().clone(true);
+        newItem.find('select').val('');
+        newItem.find('.quantity-input').val(1);
+        $('#orderItems').append(newItem);
+        updateOrderTotal();
+    });
+
+    // Удаление блюда из заказа
+    $(document).on('click', '.remove-item', function() {
+        console.log('Удаление блюда');
+        if ($('.order-item').length > 1) {
+            $(this).closest('.order-item').remove();
+            updateOrderTotal();
+        }
+    });
+
+    // Обновление суммы при изменении количества или блюда
+    $(document).on('change', '.dish-select, .quantity-input', function() {
+        console.log('Обновление суммы');
+        updateOrderTotal();
+    });
+
+    // Сохранение заказа
+    $('#saveOrderBtn').click(function() {
+        console.log('Нажата кнопка сохранения');
+        const saveBtn = $(this);
+        saveBtn.prop('disabled', true);
+
+        // Проверка заполнения формы
+        const customerName = $('#customer_name').val().trim();
+        const phoneNumber = $('#phone_number').val().trim();
+        const deliveryAddress = $('#delivery_address').val().trim();
+
+        console.log('Данные клиента:', {
+            customerName,
+            phoneNumber,
+            deliveryAddress
+        });
+
+        if (!customerName || !phoneNumber || !deliveryAddress) {
+            console.log('Ошибка: не заполнены обязательные поля');
+            alert('Пожалуйста, заполните все обязательные поля');
+            saveBtn.prop('disabled', false);
+            return;
+        }
+
+        const orderData = {
+            customer_name: customerName,
+            phone_number: phoneNumber,
+            delivery_address: deliveryAddress,
+            items: []
+        };
+
+        let hasItems = false;
+        let hasEmptyDishes = false;
+
+        $('.order-item').each(function() {
+            const dishSelect = $(this).find('.dish-select');
+            const dishId = dishSelect.val();
+            const quantity = parseInt($(this).find('.quantity-input').val()) || 0;
+            
+            console.log('Проверка позиции заказа:', {
+                dishId,
+                dishName: dishSelect.find('option:selected').text(),
+                quantity
+            });
+
+            if (!dishId) {
+                hasEmptyDishes = true;
+                return false;
+            }
+            
+            if (dishId && quantity > 0) {
+                hasItems = true;
+                orderData.items.push({
+                    dish_id: parseInt(dishId),
+                    quantity: quantity
+                });
+            }
+        });
+
+        if (hasEmptyDishes) {
+            console.log('Ошибка: есть пустые позиции');
+            alert('Пожалуйста, выберите блюдо во всех строках или удалите пустые');
+            saveBtn.prop('disabled', false);
+            return;
+        }
+
+        if (!hasItems) {
+            console.log('Ошибка: нет позиций в заказе');
+            alert('Добавьте хотя бы одно блюдо в заказ');
+            saveBtn.prop('disabled', false);
+            return;
+        }
+
+        console.log('Отправка данных заказа:', orderData);
+
+        fetch('/orders/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        })
+        .then(response => {
+            console.log('Получен ответ от сервера:', response);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Данные ответа:', data);
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка при сохранении заказа: ' + (data.error || 'Неизвестная ошибка'));
+                saveBtn.prop('disabled', false);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка при отправке заказа:', error);
+            alert('Ошибка при сохранении заказа');
+            saveBtn.prop('disabled', false);
+        });
+    });
+
+    // Просмотр заказа
+    window.viewOrder = function(orderId) {
+        console.log('Просмотр заказа:', orderId);
+        fetch('/orders/' + orderId)
+            .then(response => response.json())
+            .then(order => {
+                console.log('Данные заказа:', order);
+                let content = `
+                    <div class="mb-3">
+                        <strong>Клиент:</strong> ${order.customer_name}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Телефон:</strong> ${order.phone_number}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Адрес доставки:</strong> ${order.delivery_address}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Дата заказа:</strong> ${order.order_date}
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Блюдо</th>
+                                <th class="text-center">Кол-во</th>
+                                <th class="text-end">Цена</th>
+                                <th class="text-end">Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                order.items.forEach(item => {
+                    content += `
+                        <tr>
+                            <td>${item.dish_name}</td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-end">${item.price.toFixed(2)} ₽</td>
+                            <td class="text-end">${item.subtotal.toFixed(2)} ₽</td>
+                        </tr>`;
+                });
+
+                content += `
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>Итого:</strong></td>
+                            <td class="text-end"><strong>${order.total.toFixed(2)} ₽</strong></td>
+                        </tr>
+                    </tbody>
+                </table>`;
+
+                $('#viewOrderContent').html(content);
+                $('#viewOrderModal').modal('show');
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке заказа:', error);
+                alert('Ошибка при загрузке данных заказа');
+            });
+    };
+
+    // Удаление заказа
+    window.deleteOrder = function(orderId) {
+        if (confirm('Вы уверены, что хотите удалить этот заказ?')) {
+            console.log('Удаление заказа:', orderId);
+            fetch('/orders/' + orderId, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка при удалении заказа: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при удалении заказа:', error);
+                alert('Ошибка при удалении заказа');
+            });
+        }
+    };
+
+    // Инициализация при загрузке
+    console.log('Инициализация страницы заказов');
+    updateOrderTotal();
+});
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Инициализация всплывающих подсказок
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                delay: { show: 50, hide: 50 }
+            });
+        });
+
+        // Обработчики кнопок
+        document.querySelectorAll('.view-order').forEach(button => {
+            button.addEventListener('click', function() {
+                viewOrder(this.dataset.orderId);
+            });
+        });
+
+        document.querySelectorAll('.delete-order').forEach(button => {
+            button.addEventListener('click', function() {
+                deleteOrder(this.dataset.orderId);
+            });
+        });
+
+        // Эффект при наведении
+        document.querySelectorAll('.btn-light').forEach(button => {
+            button.addEventListener('mouseenter', function() {
+                this.classList.add('shadow-sm');
+            });
+            button.addEventListener('mouseleave', function() {
+                this.classList.remove('shadow-sm');
+            });
+        });
+    });
+</script>
+{% endblock %}

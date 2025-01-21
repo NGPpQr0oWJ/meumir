@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Меню доставки</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div class="menu-container">
+            <h1>Меню на сегодня</h1>
+            <div id="menu-items" class="menu-items"></div>
+        </div>
+        <div class="cart-container">
+            <h2>Корзина</h2>
+            <div id="cart-items" class="cart-items"></div>
+            <div class="cart-total">
+                <span>Итого:</span>
+                <span id="total-amount">0 ₽</span>
+            </div>
+            <button id="checkout-button" class="checkout-button">Оформить заказ</button>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
